@@ -32,13 +32,11 @@ screenGui.Parent = game:GetService("CoreGui")
 
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 200, 0, 320)
--- ✅ FIX: GUI centered on screen
 frame.Position = UDim2.new(0.5, -100, 0.5, -160)
 frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 frame.BackgroundTransparency = 0.3
 frame.Parent = screenGui
 frame.Active = true
-frame.Draggable = true
 local dragDetector = Instance.new("UIDragDetector", frame)
 
 local UICorner = Instance.new("UICorner")
