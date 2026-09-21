@@ -158,41 +158,74 @@ borderStroke.LineJoinMode = Enum.LineJoinMode.Round
 borderStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
 borderStroke.Parent = borderFrame
 
--- ✅ FIX: Clamp function that works for BOTH minimized and expanded states
-frame:GetPropertyChangedSignal("Position"):Connect(function()
-    borderFrame.Position = frame.Position
+-- ===================================================
+-- MOBILE + PC DRAG (works everywhere, clamped to screen)
+-- ===================================================
+local dragging = false
+local dragStart = nil
+local startPos = nil
+
+local function startDrag(input)
+    dragging = true
+    dragStart = input.Position
+    startPos = frame.Position
+end
+
+local function updateDrag(input)
+    if not dragging then return end
+    local delta = input.Position - dragStart
     local screenSize = workspace.CurrentCamera.ViewportSize
     local frameSize = frame.AbsoluteSize
-    local pos = frame.Position
 
-    local absX = pos.X.Scale * screenSize.X + pos.X.Offset
-    local absY = pos.Y.Scale * screenSize.Y + pos.Y.Offset
+    local newX = startPos.X.Offset + delta.X
+    local newY = startPos.Y.Offset + delta.Y
 
-    absX = math.clamp(absX, 0, math.max(0, screenSize.X - frameSize.X))
-    absY = math.clamp(absY, 0, math.max(0, screenSize.Y - frameSize.Y))
+    newX = math.clamp(newX, 0, math.max(0, screenSize.X - frameSize.X))
+    newY = math.clamp(newY, 0, math.max(0, screenSize.Y - frameSize.Y))
 
-    if absX ~= (pos.X.Scale * screenSize.X + pos.X.Offset)
-       or absY ~= (pos.Y.Scale * screenSize.Y + pos.Y.Offset) then
-        frame.Position = UDim2.fromOffset(absX, absY)
+    frame.Position = UDim2.fromOffset(newX, newY)
+end
+
+local function stopDrag()
+    dragging = false
+end
+
+-- Drag from the title bar when expanded
+title.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+       or input.UserInputType == Enum.UserInputType.Touch then
+        startDrag(input)
     end
 end)
 
-frame:GetPropertyChangedSignal("Size"):Connect(function()
-    borderFrame.Size = frame.Size
+-- Drag from anywhere on the frame when minimized
+invisibleExpandBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+       or input.UserInputType == Enum.UserInputType.Touch then
+        startDrag(input)
+    end
 end)
 
-frame.UICorner:GetPropertyChangedSignal("CornerRadius"):Connect(function()
-    borderCorner.CornerRadius = frame.UICorner.CornerRadius
+-- Global movement tracking
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement
+       or input.UserInputType == Enum.UserInputType.Touch then
+        updateDrag(input)
+    end
 end)
 
-local invisibleExpandBtn = Instance.new("TextButton")
-invisibleExpandBtn.Size = UDim2.new(1, 0, 1, 0)
-invisibleExpandBtn.Position = UDim2.new(0, 0, 0, 0)
-invisibleExpandBtn.BackgroundTransparency = 1
-invisibleExpandBtn.Text = ""
-invisibleExpandBtn.TextTransparency = 1
-invisibleExpandBtn.Visible = false
-invisibleExpandBtn.Parent = frame
+-- Global release tracking
+game:GetService("UserInputService").InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+       or input.UserInputType == Enum.UserInputType.Touch then
+        stopDrag()
+    end
+end)
+
+-- Keep border synced
+frame:GetPropertyChangedSignal("Position"):Connect(function()
+    borderFrame.Position = frame.Position
+end)
 
 -- ===================================================
 -- BUTTONS (all parented to scrollContainer, positions relative)
